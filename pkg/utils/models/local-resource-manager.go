@@ -35,10 +35,6 @@ type GPUMetrics struct {
 	MemoryTotal resource.Quantity `json:"totalMemory"`
 	Tier        string            `json:"tier,omitempty"`
 
-	CoresAvailable  resource.Quantity `json:"availableCores"`
-	MemoryAvailable resource.Quantity `json:"availableMemory"`
-	CountAvailable  int64             `json:"available_count"`
-
 	GPUSharingMetrics  `json:",inline"`
 	GPUNetworkMetrics  `json:",inline"`
 	GPUScoreMetrics    `json:",inline"`
