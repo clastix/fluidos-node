@@ -17,6 +17,7 @@ package localresourcemanager
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
@@ -73,6 +74,11 @@ func (r *ServiceBlueprintReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		flavor := &nodecorev1alpha1.Flavor{}
 		err = r.Get(ctx, req.NamespacedName, flavor)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				klog.Infof("%s not found, may have been deleted", req.NamespacedName)
+
+				return ctrl.Result{}, nil
+			}
 			klog.Errorf("Error getting ServiceBlueprint or Flavor: %v", err)
 			return ctrl.Result{}, err
 		}
