@@ -16,8 +16,10 @@ package localresourcemanager
 
 import (
 	"fmt"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
 	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 
@@ -57,6 +59,133 @@ func forgeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.
 	memAvail.Sub(memoryUsed)
 	podsAvail.Sub(podsUsed)
 
+	var gpuMetrics models.GPUMetrics
+
+	annotations := node.ObjectMeta.Annotations
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+
+	if v, found := annotations["provider.fluidos.eu/name"]; found {
+		gpuMetrics.Provider = v
+	}
+	if v, found := annotations["gpu.fluidos.eu/vendor"]; found {
+		gpuMetrics.Vendor = v
+	}
+	if v, found := annotations["gpu.fluidos.eu/model"]; found {
+		gpuMetrics.Model = v
+	}
+	if v, found := annotations["gpu.fluidos.eu/count"]; found {
+		count, _ := strconv.Atoi(v)
+		gpuMetrics.CountTotal = int64(count)
+	}
+	if v, found := annotations["gpu.fluidos.eu/memory-per-gpu"]; found {
+		qty := resource.MustParse(v)
+
+		computed := resource.NewQuantity(0, resource.BinarySI)
+		for range gpuMetrics.CountTotal {
+			computed.Add(qty)
+		}
+
+		gpuMetrics.MemoryTotal = *computed
+	}
+	if v, found := annotations["gpu.fluidos.eu/tier"]; found {
+		gpuMetrics.Tier = v
+	}
+	if v, found := annotations["gpu.fluidos.eu/architecture"]; found {
+		gpuMetrics.Architecture = v
+	}
+	if v, found := annotations["gpu.fluidos.eu/compute-capability"]; found {
+		gpuMetrics.ComputeCapability = v
+	}
+	if v, found := annotations["nvidia.fluidos.eu/mig-capable"]; found {
+		gpuMetrics.MultiInstance, _ = strconv.ParseBool(v)
+	}
+	if v, found := annotations["gpu.fluidos.eu/fp32-tflops"]; found {
+		fp32tFlops, _ := strconv.ParseFloat(v, 64)
+		gpuMetrics.FP32TFlops = fp32tFlops
+	}
+	if v, found := annotations["gpu.fluidos.eu/sharing-capable"]; found {
+		gpuMetrics.Shared, _ = strconv.ParseBool(v)
+	}
+	if v, found := annotations["gpu.fluidos.eu/sharing-strategy"]; found {
+		gpuMetrics.SharingStrategy = v
+	}
+	if v, found := annotations["gpu.fluidos.eu/interconnect"]; found {
+		gpuMetrics.Interconnect = v
+	}
+	if v, found := annotations["gpu.fluidos.eu/interconnect-bandwidth-gbps"]; found {
+		qty := resource.MustParse(v)
+		gpuMetrics.InterconnectBandwidth = qty
+	}
+	if v, found := annotations["gpu.fluidos.eu/cores"]; found {
+		qty := resource.MustParse(v)
+
+		computed := resource.NewQuantity(0, resource.BinarySI)
+		for range gpuMetrics.CountTotal {
+			computed.Add(qty)
+		}
+
+		gpuMetrics.CoresTotal = *computed
+	}
+	if v, found := annotations["gpu.fluidos.eu/clock-speed"]; found {
+		gpuMetrics.ClockSpeed = resource.MustParse(v)
+	}
+	if v, found := annotations["gpu.fluidos.eu/interruptible"]; found {
+		gpuMetrics.Interruptible, _ = strconv.ParseBool(v)
+	}
+	if v, found := annotations["gpu.fluidos.eu/dedicated"]; found {
+		gpuMetrics.Dedicated, _ = strconv.ParseBool(v)
+	}
+	if v, found := annotations["gpu.fluidos.eu/topology"]; found {
+		gpuMetrics.Topology = v
+	}
+	if v, found := annotations["gpu.fluidos.eu/multi-gpu-efficiency"]; found {
+		gpuMetrics.MultiGPUEfficiency = v
+	}
+	if v, found := annotations["cost.fluidos.eu/hourly-rate"]; found {
+		hourlyRate, _ := strconv.ParseFloat(v, 64)
+		gpuMetrics.HourlyRate = hourlyRate
+	}
+	if v, found := annotations["provider.fluidos.eu/preemptible"]; found {
+		gpuMetrics.PreEmptible, _ = strconv.ParseBool(v)
+	}
+	if v, found := annotations["workload.fluidos.eu/training-score"]; found {
+		score, _ := strconv.ParseFloat(v, 64)
+		gpuMetrics.TrainingScore = score
+	}
+	if v, found := annotations["workload.fluidos.eu/inference-score"]; found {
+		score, _ := strconv.ParseFloat(v, 64)
+		gpuMetrics.InferenceScore = score
+	}
+	if v, found := annotations["workload.fluidos.eu/hpc-score"]; found {
+		score, _ := strconv.ParseFloat(v, 64)
+		gpuMetrics.HPCScore = score
+	}
+	if v, found := annotations["workload.fluidos.eu/graphics-score"]; found {
+		score, _ := strconv.ParseFloat(v, 64)
+		gpuMetrics.GraphicsScore = score
+	}
+	if v, found := annotations["network.fluidos.eu/bandwidth-gbps"]; found {
+		qty := resource.MustParse(v)
+		gpuMetrics.NetworkBandwidth = qty
+	}
+	if v, found := annotations["network.fluidos.eu/latency-ms"]; found {
+		ms, _ := strconv.ParseInt(v, 10, 64)
+		gpuMetrics.NetworkLatencyMs = ms
+	}
+	if v, found := annotations["network.fluidos.eu/tier"]; found {
+		gpuMetrics.NetworkTier = v
+	}
+
+	if v, found := annotations["location.fluidos.eu/zone"]; found {
+		gpuMetrics.Region = v
+	}
+
+	if v, found := annotations["location.fluidos.eu/region"]; found {
+		gpuMetrics.Zone = v
+	}
+
 	return &models.ResourceMetrics{
 		CPUTotal:         cpuTotal,
 		CPUAvailable:     cpuAvail,
@@ -65,6 +194,7 @@ func forgeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.
 		PodsTotal:        podsTotal,
 		PodsAvailable:    podsAvail,
 		EphemeralStorage: ephemeralStorage,
+		GPU:              gpuMetrics,
 	}
 }
 

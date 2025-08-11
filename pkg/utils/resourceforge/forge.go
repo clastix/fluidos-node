@@ -176,75 +176,6 @@ func ForgeContract(
 	}
 }
 
-// ForgeK8SliceFlavorFromMetrics creates a new flavor custom resource from the metrics of the node.
-func ForgeK8SliceFlavorFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIdentity,
-	ownerReferences []metav1.OwnerReference) (flavor *nodecorev1alpha1.Flavor) {
-	k8SliceType := nodecorev1alpha1.K8Slice{
-		Characteristics: nodecorev1alpha1.K8SliceCharacteristics{
-			Architecture: node.Architecture,
-			CPU:          node.ResourceMetrics.CPUAvailable,
-			Memory:       node.ResourceMetrics.MemoryAvailable,
-			Pods:         node.ResourceMetrics.PodsAvailable,
-			Storage:      &node.ResourceMetrics.EphemeralStorage,
-			Gpu: &nodecorev1alpha1.GPU{
-				Model:  node.ResourceMetrics.GPU.Model,
-				Cores:  node.ResourceMetrics.GPU.CoresAvailable,
-				Memory: node.ResourceMetrics.GPU.MemoryAvailable,
-			},
-		},
-		Properties: nodecorev1alpha1.Properties{},
-		Policies: nodecorev1alpha1.Policies{
-			Partitionability: nodecorev1alpha1.Partitionability{
-				CPUMin:     parseutil.ParseQuantityFromString(flags.CPUMin),
-				MemoryMin:  parseutil.ParseQuantityFromString(flags.MemoryMin),
-				PodsMin:    parseutil.ParseQuantityFromString(flags.PodsMin),
-				CPUStep:    parseutil.ParseQuantityFromString(flags.CPUStep),
-				MemoryStep: parseutil.ParseQuantityFromString(flags.MemoryStep),
-				PodsStep:   parseutil.ParseQuantityFromString(flags.PodsStep),
-			},
-		},
-	}
-
-	// Serialize K8SliceType to JSON
-	k8SliceTypeJSON, err := json.Marshal(k8SliceType)
-	if err != nil {
-		klog.Errorf("Error when marshaling K8SliceType: %s", err)
-		return nil
-	}
-
-	return &nodecorev1alpha1.Flavor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            namings.ForgeFlavorName(string(nodecorev1alpha1.TypeK8Slice), ni.Domain),
-			Namespace:       flags.FluidosNamespace,
-			OwnerReferences: ownerReferences,
-		},
-		Spec: nodecorev1alpha1.FlavorSpec{
-			ProviderID: ni.NodeID,
-			FlavorType: nodecorev1alpha1.FlavorType{
-				TypeIdentifier: nodecorev1alpha1.TypeK8Slice,
-				TypeData:       runtime.RawExtension{Raw: k8SliceTypeJSON},
-			},
-			Owner: ni,
-			Price: nodecorev1alpha1.Price{
-				Amount:   flags.AMOUNT,
-				Currency: flags.CURRENCY,
-				Period:   flags.PERIOD,
-			},
-			Availability: true,
-			// FIXME: NetworkPropertyType should be taken in a smarter way
-			NetworkPropertyType: "networkProperty",
-			// FIXME: Location should be taken in a smarter way
-			Location: &nodecorev1alpha1.Location{
-				Latitude:        "10",
-				Longitude:       "58",
-				Country:         "Italy",
-				City:            "Turin",
-				AdditionalNotes: "None",
-			},
-		},
-	}
-}
-
 // ForgeServiceFlavorFromBlueprint creates a new flavor custom resource from a ServiceBlueprint.
 func ForgeServiceFlavorFromBlueprint(serviceBlueprint *nodecorev1alpha1.ServiceBlueprint, ni *nodecorev1alpha1.NodeIdentity,
 	ownerReferences []metav1.OwnerReference) (flavor *nodecorev1alpha1.Flavor) {
@@ -569,12 +500,9 @@ func ForgeConfigurationFromObj(configuration models.Configuration) (*nodecorev1a
 			Pods:   configurationStruct.Pods,
 			Gpu: func() *nodecorev1alpha1.GPU {
 				if configurationStruct.Gpu != nil {
-					return &nodecorev1alpha1.GPU{
-						Model:  configurationStruct.Gpu.Model,
-						Cores:  configurationStruct.Gpu.Cores,
-						Memory: configurationStruct.Gpu.Memory,
-					}
+					return parseutil.ToNodeCoreGPU(*configurationStruct.Gpu)
 				}
+
 				return nil
 			}(),
 			Storage: configurationStruct.Storage,
@@ -647,11 +575,7 @@ func ForgeConfigurationObj(configuration *nodecorev1alpha1.Configuration) (*mode
 			Pods:   configurationStruct.Pods,
 			Gpu: func() *models.GpuCharacteristics {
 				if configurationStruct.Gpu != nil {
-					return &models.GpuCharacteristics{
-						Model:  configurationStruct.Gpu.Model,
-						Cores:  configurationStruct.Gpu.Cores,
-						Memory: configurationStruct.Gpu.Memory,
-					}
+					return parseutil.ToGpuCharacteristics(*configurationStruct.Gpu)
 				}
 				return nil
 			}(),
@@ -868,12 +792,9 @@ func ForgeFlavorFromObj(flavor *models.Flavor) (*nodecorev1alpha1.Flavor, error)
 				Storage:      flavorTypeDataModel.Characteristics.Storage,
 				Gpu: func() *nodecorev1alpha1.GPU {
 					if flavorTypeDataModel.Characteristics.Gpu != nil {
-						return &nodecorev1alpha1.GPU{
-							Model:  flavorTypeDataModel.Characteristics.Gpu.Model,
-							Cores:  flavorTypeDataModel.Characteristics.Gpu.Cores,
-							Memory: flavorTypeDataModel.Characteristics.Gpu.Memory,
-						}
+						return parseutil.ToNodeCoreGPU(*flavorTypeDataModel.Characteristics.Gpu)
 					}
+
 					return nil
 				}(),
 			},

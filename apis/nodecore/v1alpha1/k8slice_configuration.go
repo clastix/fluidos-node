@@ -14,7 +14,9 @@
 
 package v1alpha1
 
-import "k8s.io/apimachinery/pkg/api/resource"
+import (
+	"k8s.io/apimachinery/pkg/api/resource"
+)
 
 // K8SliceConfiguration is the partition of the flavor K8Slice.
 type K8SliceConfiguration struct {
