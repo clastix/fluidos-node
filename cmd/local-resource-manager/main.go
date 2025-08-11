@@ -24,13 +24,13 @@ import (
 	"k8s.io/klog/v2"
 	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	"github.com/fluidos-project/node/pkg/indexer"
 	localresourcemanager "github.com/fluidos-project/node/pkg/local-resource-manager"
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
@@ -82,13 +82,6 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	cfg := ctrl.GetConfigOrDie()
-	cl, err := client.New(cfg, client.Options{Scheme: scheme})
-	if err != nil {
-		setupLog.Error(err, "Unable to create client")
-		os.Exit(1)
-	}
-
 	var webhookServer webhook.Server
 
 	if *enableWH {
@@ -115,12 +108,15 @@ func main() {
 	// Print something about the mgr
 	setupLog.Info("Manager started", "manager", mgr)
 
+	flavorIndexer := indexer.FlavorByNodeName{}
+
 	// Register the controller
 	if err = (&localresourcemanager.NodeReconciler{
-		Client:              cl,
+		Client:              mgr.GetClient(),
 		Scheme:              mgr.GetScheme(),
 		EnableAutoDiscovery: *enableAutoDiscovery,
 		WebhookServer:       webhookServer,
+		FlavorIndexer:       flavorIndexer,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Node")
 		os.Exit(1)
@@ -128,7 +124,7 @@ func main() {
 
 	// Register the controller
 	if err = (&localresourcemanager.ServiceBlueprintReconciler{
-		Client:              cl,
+		Client:              mgr.GetClient(),
 		Scheme:              mgr.GetScheme(),
 		EnableAutoDiscovery: *enableAutoDiscovery,
 		WebhookServer:       webhookServer,
@@ -164,11 +160,19 @@ func main() {
 	if *enableWH {
 		if err := mgr.AddHealthzCheck("webhook", webhookServer.StartedChecker()); err != nil {
 			setupLog.Error(err, "unable to set up webhook health check")
+			os.Exit(1)
+		}
+	}
+
+	ctx := ctrl.SetupSignalHandler()
+
+	if err := mgr.GetFieldIndexer().IndexField(ctx, flavorIndexer.Object(), flavorIndexer.Field(), flavorIndexer.IndexerFunc()); err != nil {
+		setupLog.Error(err, "problem setting up flavorIndexer")
 		os.Exit(1)
 	}
 
 	setupLog.Info("Starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
