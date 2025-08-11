@@ -40,7 +40,7 @@ import (
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	contractmanager "github.com/fluidos-project/node/pkg/rear-controller/contract-manager"
 	discoverymanager "github.com/fluidos-project/node/pkg/rear-controller/discovery-manager"
-	gateway "github.com/fluidos-project/node/pkg/rear-controller/gateway"
+	"github.com/fluidos-project/node/pkg/rear-controller/gateway"
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
@@ -220,9 +220,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := mgr.AddHealthzCheck("webhook", webhookServer.StartedChecker()); err != nil {
-		setupLog.Error(err, "unable to set up webhook health check")
-		os.Exit(1)
+	if *enableWH {
+		if err := mgr.AddHealthzCheck("webhook", webhookServer.StartedChecker()); err != nil {
+			setupLog.Error(err, "unable to set up webhook health check")
+			os.Exit(1)
+		}
 	}
 
 	// Periodically clear the transaction cache

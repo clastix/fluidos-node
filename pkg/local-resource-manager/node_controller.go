@@ -63,10 +63,12 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	// Check if the webhook server is running
-	if err := r.WebhookServer.StartedChecker()(nil); err != nil {
-		klog.Info("Webhook server not started yet, requeuing the request")
-		return ctrl.Result{Requeue: true}, nil
+	if r.WebhookServer != nil {
+		// Check if the webhook server is running
+		if err := r.WebhookServer.StartedChecker()(nil); err != nil {
+			log.Info("Webhook server not started yet, requeuing the request")
+			return ctrl.Result{Requeue: true}, nil
+		}
 	}
 
 	// Set for labels over the node

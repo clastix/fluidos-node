@@ -59,9 +59,11 @@ func (r *ServiceBlueprintReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	// Check if the webhook server is running
-	if err := r.WebhookServer.StartedChecker()(nil); err != nil {
-		klog.Info("Webhook server not started yet, requeuing the request")
-		return ctrl.Result{Requeue: true}, nil
+	if r.WebhookServer != nil {
+		if err := r.WebhookServer.StartedChecker()(nil); err != nil {
+			klog.Info("Webhook server not started yet, requeuing the request")
+			return ctrl.Result{Requeue: true}, nil
+		}
 	}
 
 	// Fetch the ServiceBlueprint instance

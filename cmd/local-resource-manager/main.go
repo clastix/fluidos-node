@@ -161,8 +161,9 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	if err := mgr.AddHealthzCheck("webhook", webhookServer.StartedChecker()); err != nil {
-		setupLog.Error(err, "unable to set up webhook health check")
+	if *enableWH {
+		if err := mgr.AddHealthzCheck("webhook", webhookServer.StartedChecker()); err != nil {
+			setupLog.Error(err, "unable to set up webhook health check")
 		os.Exit(1)
 	}
 
