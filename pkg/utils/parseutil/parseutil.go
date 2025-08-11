@@ -384,11 +384,7 @@ func ParseConfiguration(configuration *nodecorev1alpha1.Configuration, flavor *n
 			Pods:   configuration.Pods,
 			Gpu: func() *models.GpuCharacteristics {
 				if configuration.Gpu != nil {
-					return &models.GpuCharacteristics{
-						Model:  configuration.Gpu.Model,
-						Cores:  configuration.Gpu.Cores,
-						Memory: configuration.Gpu.Memory,
-					}
+					return ToGpuCharacteristics(*configuration.Gpu)
 				}
 				return nil
 			}(),
@@ -581,11 +577,7 @@ func ParseFlavor(flavor *nodecorev1alpha1.Flavor) *models.Flavor {
 				Pods:         flavorTypeStruct.Characteristics.Pods,
 				Gpu: func() *models.GpuCharacteristics {
 					if flavorTypeStruct.Characteristics.Gpu != nil {
-						return &models.GpuCharacteristics{
-							Model:  flavorTypeStruct.Characteristics.Gpu.Model,
-							Cores:  flavorTypeStruct.Characteristics.Gpu.Cores,
-							Memory: flavorTypeStruct.Characteristics.Gpu.Memory,
-						}
+						return ToGpuCharacteristics(*flavorTypeStruct.Characteristics.Gpu)
 					}
 					return nil
 				}(),

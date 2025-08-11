@@ -46,7 +46,7 @@ type K8SliceCharacteristics struct {
 	Memory resource.Quantity `json:"memory"`
 	// Pods is the maximum number of pods schedulable on this K8Slice Flavor.
 	Pods resource.Quantity `json:"pods"`
-	// GPU is the number of GPU cores of the K8Slice Flavor.
+	// GPU contains the GPU traits of the K8Slice Flavor.
 	Gpu *GPU `json:"gpu,omitempty"`
 	// Storage is the amount of storage offered by this K8Slice Flavor.
 	Storage *resource.Quantity `json:"storage,omitempty"`
@@ -60,6 +60,37 @@ type GPU struct {
 	Cores resource.Quantity `json:"cores"`
 	// Memory of the GPU
 	Memory resource.Quantity `json:"memory"`
+	//
+	// FLARE properties
+	//
+	Vendor                string            `json:"vendor"`
+	Tier                  string            `json:"tier,omitempty"`
+	Count                 int64             `json:"count,omitempty"`
+	MultiInstance         bool              `json:"multi_instance,omitempty"`
+	Shared                bool              `json:"shared,omitempty"`
+	SharingStrategy       string            `json:"sharing_strategy,omitempty"`
+	Dedicated             bool              `json:"dedicated,omitempty"`
+	Interruptible         bool              `json:"interruptible,omitempty"`
+	NetworkBandwidth      resource.Quantity `json:"network_bandwidth,omitempty"`
+	NetworkLatencyMs      int64             `json:"network_latency_ms,omitempty"`
+	NetworkTier           string            `json:"network_tier,omitempty"`
+	TrainingScore         float64           `json:"training_score,omitempty"`
+	InferenceScore        float64           `json:"inference_score,omitempty"`
+	HPCScore              float64           `json:"hpc_score,omitempty"`
+	GraphicsScore         float64           `json:"graphics_score,omitempty"`
+	Architecture          string            `json:"architecture,omitempty"`
+	Interconnect          string            `json:"interconnect,omitempty"`
+	InterconnectBandwidth resource.Quantity `json:"interconnect_bandwidth,omitempty"`
+	ComputeCapability     string            `json:"compute_capability,omitempty"`
+	ClockSpeed            resource.Quantity `json:"clock_speed,omitempty"`
+	FP32TFlops            float64           `json:"fp32_tflops,omitempty"`
+	Topology              string            `json:"topology,omitempty"`
+	MultiGPUEfficiency    string            `json:"multi_gpu_efficiency,omitempty"`
+	Region                string            `json:"region,omitempty"`
+	Zone                  string            `json:"zone,omitempty"`
+	HourlyRate            float64           `json:"hourly_rate,omitempty"`
+	Provider              string            `json:"provider,omitempty"`
+	PreEmptible           bool              `json:"pre_emptible,omitempty"`
 }
 
 // Policies represents the policies of a K8Slice Flavor, such as the partitionability of the K8Slice Flavor.

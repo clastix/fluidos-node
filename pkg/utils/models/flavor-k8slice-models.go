@@ -16,29 +16,43 @@ package models
 
 import (
 	"encoding/json"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/api/resource"
-
-	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 )
 
 // GpuCharacteristics represents the characteristics of a Gpu.
 type GpuCharacteristics struct {
-	Model  string            `json:"model"`
-	Cores  resource.Quantity `json:"cores"`
-	Memory resource.Quantity `json:"memory"`
-}
-
-// Cmp compares models.GpuCharacteristics with nodecorev1alpha1.GPU.
-func (gpu *GpuCharacteristics) Cmp(other *nodecorev1alpha1.GPU) int {
-	if gpu.Model != other.Model {
-		return strings.Compare(gpu.Model, other.Model)
-	}
-	if cmp := gpu.Cores.Cmp(other.Cores); cmp != 0 {
-		return cmp
-	}
-	return gpu.Memory.Cmp(other.Memory)
+	Vendor                string            `json:"vendor"`
+	Model                 string            `json:"model"`
+	Count                 int64             `json:"total_count"`
+	Tier                  string            `json:"tier"`
+	MultiInstance         bool              `json:"multi_instance"`
+	Shared                bool              `json:"shared"`
+	SharingStrategy       string            `json:"sharing_strategy"`
+	Dedicated             bool              `json:"dedicated"`
+	Interruptible         bool              `json:"interruptible"`
+	NetworkBandwidth      resource.Quantity `json:"network_bandwidth"`
+	NetworkLatencyMs      int64             `json:"network_latency_ms"`
+	NetworkTier           string            `json:"network_tier"`
+	TrainingScore         float64           `json:"training_score"`
+	InferenceScore        float64           `json:"inference_score"`
+	HPCScore              float64           `json:"hpc_score"`
+	GraphicsScore         float64           `json:"graphics_score"`
+	Architecture          string            `json:"architecture"`
+	Interconnect          string            `json:"interconnect"`
+	InterconnectBandwidth resource.Quantity `json:"interconnect_bandwidth"`
+	Cores                 resource.Quantity `json:"cores"`
+	Memory                resource.Quantity `json:"memory"`
+	ComputeCapability     string            `json:"compute_capability"`
+	ClockSpeed            resource.Quantity `json:"clock_speed"`
+	FP32TFlops            float64           `json:"fp32_tflops"`
+	Topology              string            `json:"topology"`
+	MultiGPUEfficiency    string            `json:"multi_gpu_efficiency"`
+	Region                string            `json:"region"`
+	Zone                  string            `json:"zone"`
+	HourlyRate            float64           `json:"hourly_rate"`
+	Provider              string            `json:"provider"`
+	PreEmptible           bool              `json:"pre_emptible"`
 }
 
 // K8SliceCharacteristics represents the characteristics of a Kubernetes slice.

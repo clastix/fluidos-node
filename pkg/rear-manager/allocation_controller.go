@@ -1105,11 +1105,12 @@ func computeK8SliceCharacteristics(origin *nodecorev1alpha1.K8SliceCharacteristi
 				newGpuCores.Sub(part.Gpu.Cores)
 				newGpuMemory := origin.Gpu.Memory.DeepCopy()
 				newGpuMemory.Sub(part.Gpu.Memory)
-				return &nodecorev1alpha1.GPU{
-					Model:  origin.Gpu.Model,
-					Cores:  newGpuCores,
-					Memory: newGpuMemory,
-				}
+
+				newGpu := origin.DeepCopy()
+				newGpu.Gpu.Cores = newGpuCores
+				newGpu.Gpu.Memory = newGpuMemory
+
+				return newGpu.Gpu
 			case part.Gpu == nil && origin.Gpu != nil:
 				// Gpu is present in the origin but not in the partition
 				return origin.Gpu.DeepCopy()
