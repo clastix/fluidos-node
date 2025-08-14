@@ -84,8 +84,13 @@ func main() {
 		setupLog.Info("Webhooks are disabled")
 	}
 
+	ctx := ctrl.SetupSignalHandler()
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
+		BaseContext: func() context.Context {
+			return ctx
+		},
 		Metrics: server.Options{
 			BindAddress: metricsAddr,
 		},
@@ -130,7 +135,7 @@ func main() {
 	}
 
 	if err := cache.IndexField(
-		context.Background(),
+		ctx,
 		&reservationv1alpha1.Contract{},
 		"spec.transactionID",
 		indexFuncTransaction,
@@ -140,7 +145,7 @@ func main() {
 	}
 
 	if err := cache.IndexField(
-		context.Background(),
+		ctx,
 		&reservationv1alpha1.Contract{},
 		"spec.buyerClusterID",
 		indexFuncClusterID,
@@ -150,7 +155,7 @@ func main() {
 	}
 
 	if err := cache.IndexField(
-		context.Background(),
+		ctx,
 		&reservationv1alpha1.Contract{},
 		"spec.buyer.additionalInformation.liqoID",
 		indexFuncBuyerLiqoID,
@@ -160,7 +165,7 @@ func main() {
 	}
 
 	if err := cache.IndexField(
-		context.Background(),
+		ctx,
 		&reservationv1alpha1.Contract{},
 		"spec.seller.additionalInformation.liqoID",
 		indexFuncSellerLiqoID,
@@ -246,7 +251,7 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
