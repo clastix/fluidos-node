@@ -3,9 +3,10 @@
 # Build and load the docker image
 build_and_load() {
   local COMPONENT="$1"
-  docker build -f ../../build/common/Dockerfile --build-arg COMPONENT="$COMPONENT" -t "$NAMESPACE"/"$COMPONENT":"$VERSION" ../../
-  kind load docker-image "$NAMESPACE"/"$COMPONENT":"$VERSION" --name=fluidos-provider
-  kind load docker-image "$NAMESPACE"/"$COMPONENT":"$VERSION" --name=fluidos-consumer
+  docker build -f ../../build/common/Dockerfile --build-arg COMPONENT="$COMPONENT" -t "$NAMESPACE/$COMPONENT:$VERSION" ../../
+  for NAME in $(kind get clusters | grep -i fluidos); do
+    kind load docker-image "$NAMESPACE/$COMPONENT:$VERSION" --name="$NAME"
+  done
 }
 
 # Get the Docker namespace, version, and component from the command line
