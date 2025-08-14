@@ -18,14 +18,17 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
-	gateway "github.com/fluidos-project/node/pkg/rear-controller/gateway"
-	"github.com/fluidos-project/node/pkg/utils/resourceforge"
+	"github.com/fluidos-project/node/pkg/rear-controller/gateway"
+	"github.com/fluidos-project/node/pkg/utils/flags"
+	"github.com/fluidos-project/node/pkg/utils/namings"
 	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
@@ -54,8 +57,6 @@ type DiscoveryReconciler struct {
 func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx, "discovery", req.NamespacedName)
 	ctx = ctrl.LoggerInto(ctx, log)
-
-	var peeringCandidate *advertisementv1alpha1.PeeringCandidate
 
 	var discovery advertisementv1alpha1.Discovery
 	if err := r.Get(ctx, req.NamespacedName, &discovery); client.IgnoreNotFound(err) != nil {
@@ -112,19 +113,34 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		klog.Infof("Flavors found: %d", len(flavors))
 
 		for _, flavor := range flavors {
-			peeringCandidate = resourceforge.ForgePeeringCandidate(flavor, discovery.Spec.SolverID, true)
-			err = r.Create(context.Background(), peeringCandidate)
+			var peeringCandidate advertisementv1alpha1.PeeringCandidate
+			peeringCandidate.Namespace = flags.FluidosNamespace
+			peeringCandidate.Name = namings.ForgePeeringCandidateName(flavor.Name)
+
+			_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &peeringCandidate, func() error {
+				peeringCandidate.Spec.Flavor.ObjectMeta.Name = flavor.Name
+				peeringCandidate.Spec.Flavor.ObjectMeta.Namespace = flavor.Namespace
+				peeringCandidate.Spec.Flavor.Spec = flavor.Spec
+				peeringCandidate.Spec.Available = true
+
+				ids := sets.New[string](peeringCandidate.Spec.InterestedSolverIDs...)
+				ids.Insert(discovery.Spec.SolverID)
+
+				peeringCandidate.Spec.InterestedSolverIDs = ids.UnsortedList()
+
+				return nil
+			})
 			if err != nil {
 				klog.Infof("Discovery %s failed: error while creating Peering Candidate", discovery.Name)
 				return ctrl.Result{}, err
 			}
 			peeringCandidate.Status.CreationTime = tools.GetTimeNow()
-			if err := r.Status().Update(ctx, peeringCandidate); err != nil {
+			if err := r.Status().Update(ctx, &peeringCandidate); err != nil {
 				klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
 			}
 			// Append the PeeringCandidate to the list of PeeringCandidates found by the Discovery
-			discovery.Status.PeeringCandidateList.Items = append(discovery.Status.PeeringCandidateList.Items, *peeringCandidate)
+			discovery.Status.PeeringCandidateList.Items = append(discovery.Status.PeeringCandidateList.Items, peeringCandidate)
 		}
 
 		discovery.SetPhase(nodecorev1alpha1.PhaseSolved, "Discovery Solved: Peering Candidate found")

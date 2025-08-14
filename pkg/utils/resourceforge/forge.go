@@ -65,29 +65,6 @@ func ForgeDiscovery(selector *nodecorev1alpha1.Selector, solverID string) *adver
 	}
 }
 
-// ForgePeeringCandidate creates a PeeringCandidate CR from a Flavor and a Discovery.
-func ForgePeeringCandidate(flavorPeeringCandidate *nodecorev1alpha1.Flavor,
-	solverID string, available bool) (pc *advertisementv1alpha1.PeeringCandidate) {
-	pc = &advertisementv1alpha1.PeeringCandidate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      namings.ForgePeeringCandidateName(flavorPeeringCandidate.Name),
-			Namespace: flags.FluidosNamespace,
-		},
-		Spec: advertisementv1alpha1.PeeringCandidateSpec{
-			Flavor: nodecorev1alpha1.Flavor{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      flavorPeeringCandidate.Name,
-					Namespace: flavorPeeringCandidate.Namespace,
-				},
-				Spec: flavorPeeringCandidate.Spec,
-			},
-			Available: available,
-		},
-	}
-	pc.Spec.InterestedSolverIDs = append(pc.Spec.InterestedSolverIDs, solverID)
-	return
-}
-
 // ForgeReservation creates a Reservation CR from a PeeringCandidate.
 func ForgeReservation(pc *advertisementv1alpha1.PeeringCandidate,
 	configuration *nodecorev1alpha1.Configuration,
