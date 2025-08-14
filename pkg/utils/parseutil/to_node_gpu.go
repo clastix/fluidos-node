@@ -42,7 +42,6 @@ func ToNodeCoreGPU(in models.GpuCharacteristics) *nodecorev1alpha1.GPU {
 		Architecture:          in.Architecture,
 		Interconnect:          in.Interconnect,
 		InterconnectBandwidth: in.InterconnectBandwidth,
-		CoresTotal:            in.Cores,
 		ComputeCapability:     in.ComputeCapability,
 		ClockSpeed:            in.ClockSpeed,
 		FP32TFlops:            in.FP32TFlops,

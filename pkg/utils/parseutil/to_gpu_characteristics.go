@@ -40,7 +40,7 @@ func ToGpuCharacteristics(input v1alpha1.GPU) *models.GpuCharacteristics {
 		Architecture:          input.Architecture,
 		Interconnect:          input.Interconnect,
 		InterconnectBandwidth: input.InterconnectBandwidth,
-		Cores:                 input.CoresTotal,
+		Cores:                 input.Cores,
 		Memory:                input.Memory,
 		ComputeCapability:     input.ComputeCapability,
 		ClockSpeed:            input.ClockSpeed,

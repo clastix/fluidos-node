@@ -34,6 +34,30 @@ const (
 // FilterType is the type of filter that can be applied to a resource quantity.
 type FilterType string
 
+// BooleanFilter is a filter that can be applied to a boolean value.
+type BooleanFilter struct {
+	Data runtime.RawExtension `json:"data"`
+}
+
+type NumberFilter struct {
+	// Name indicates the type of the filter
+	Name FilterType `json:"name"`
+	// Filter data
+	Data runtime.RawExtension `json:"data"`
+}
+
+type NumberMatchSelector struct {
+	// Value is the value to match
+	Value float64 `json:"value"`
+}
+
+type NumberRangeSelector struct {
+	// Min is the minimum value of the range
+	Min *float64 `json:"min,omitempty"`
+	// Max is the maximum value of the range
+	Max *float64 `json:"max,omitempty"`
+}
+
 // StringFilter is a filter that can be applied to a string.
 type StringFilter struct {
 	// Name indicates the type of the filter
@@ -74,6 +98,28 @@ type ResourceRangeSelector struct {
 	Min *resource.Quantity `json:"min,omitempty"`
 	// Max is the maximum value of the range
 	Max *resource.Quantity `json:"max,omitempty"`
+}
+
+type SelectorName string
+
+var (
+	ResourceRangeSelectorName = SelectorName("ResourceRangeSelector")
+	ResourceMatchSelectorName = SelectorName("ResourceMatchSelector")
+	StringRangeSelectorName   = SelectorName("StringRangeSelector")
+	StringFilterSelectorName  = SelectorName("StringFilter")
+	BooleanFilterSelectorName = SelectorName("BooleanFilter")
+	NumberRangeSelectorName   = SelectorName("NumberRangeFilter")
+	NumberMatchSelectorName   = SelectorName("NumberMatchFilter")
+)
+
+type GPUFieldSelector struct {
+	// Field is the GPU field the filter should evaluate.
+	Field string `json:"field"`
+	// Selector is the name of the concrete Selector to enforce for the given data.
+	//+kubebuilder:validation:Enum=ResourceRangeSelector;ResourceMatchSelector;StringRangeSelector;StringFilter;BooleanFilter;NumberRangeFilter;NumberFilter
+	Selector SelectorName `json:"filter"`
+	// Data contains the raw data for the given filter.
+	Data runtime.RawExtension `json:"data"`
 }
 
 // ParseResourceQuantityFilter parses a ResourceQuantityFilter into a FilterType and the corresponding filter data.

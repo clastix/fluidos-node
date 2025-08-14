@@ -18,8 +18,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 
+	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
@@ -144,6 +148,56 @@ func filterResourceQuantityFilter(selectorValue resource.Quantity, filter models
 	return true
 }
 
+func filterNumberFilter(selectorValue float64, filter models.NumberFilter) bool {
+	switch filter.Name {
+	case models.MatchFilter:
+		// Parse the filter to a match filter
+		var matchFilter models.NumberMatchFilter
+		err := json.Unmarshal(filter.Data, &matchFilter)
+		if err != nil {
+			klog.Errorf("Error unmarshalling match filter: %v", err)
+			return false
+		}
+		// Check if the selector value matches the filter value
+		if selectorValue != matchFilter.Value {
+			klog.Infof("Match Filter: %f - Selector Value: %s", matchFilter.Value, selectorValue)
+			return false
+		}
+	case models.RangeFilter:
+		// Parse the filter to a range filter
+		var rangeFilter models.NumberRangeFilter
+		err := json.Unmarshal(filter.Data, &rangeFilter)
+		if err != nil {
+			klog.Errorf("Error unmarshalling range filter: %v", err)
+			return false
+		}
+		// Check if the selector value is within the range
+		// If the rangeFilter.Min exists check if the selector value is greater or equal to it
+		if rangeFilter.Min != nil {
+			if selectorValue < *rangeFilter.Min {
+				klog.Infof("Range Filter: %v-%v - Selector Value: %v", rangeFilter.Min, rangeFilter.Max, selectorValue)
+				return false
+			}
+		}
+		// If the rangeFilter.Max exists check if the selector value is less or equal to it
+		if rangeFilter.Max != nil {
+			if selectorValue > *rangeFilter.Max {
+				klog.Infof("Range Filter: %v-%v - Selector Value: %v", rangeFilter.Min, rangeFilter.Max, selectorValue)
+				return false
+			}
+		}
+	default:
+		klog.Errorf("Filter name %s not supported", filter.Name)
+		return false
+	}
+
+	return true
+}
+
+func filterBooleanFilter(selectorValue bool, filter models.BooleanFilter) bool {
+	return selectorValue != filter.Condition
+}
+
 func filterStringFilter(selectorValue string, filter models.StringFilter) bool {
 	switch filter.Name {
 	case models.MatchFilter:
@@ -227,6 +281,66 @@ func filterFlavorK8Slice(k8SliceSelector *models.K8SliceSelector, flavorTypeK8Sl
 		storageFilterModel := *k8SliceSelector.Storage
 		if !filterResourceQuantityFilter(*flavorTypeK8SliceCR.Characteristics.Storage, storageFilterModel) {
 			return false
+		}
+	}
+
+	if gpuTraits := flavorTypeK8SliceCR.Characteristics.Gpu; gpuTraits != nil {
+		copied := gpuTraits.DeepCopy()
+		u, err := runtime.DefaultUnstructuredConverter.ToUnstructured(copied)
+		if err != nil {
+			klog.Errorf("Error converting gpu traits to unstructured: %v", err)
+			return false
+		}
+
+		keys := maps.Keys(k8SliceSelector.GPUFields)
+		slices.Sort(keys)
+
+		for _, key := range keys {
+			filter := k8SliceSelector.GPUFields[key]
+
+			switch f := filter.(type) {
+			case models.NumberFilter:
+				v, found, _ := unstructured.NestedNumberAsFloat64(u, key)
+				if !found {
+					return false
+				}
+
+				if !filterNumberFilter(v, f) {
+					return false
+				}
+			case models.BooleanFilter:
+				v, found, _ := unstructured.NestedBool(u, key)
+				if !found {
+					return false
+				}
+
+				if !filterBooleanFilter(v, f) {
+					return false
+				}
+			case models.StringFilter:
+				v, found, _ := unstructured.NestedString(u, key)
+				if !found {
+					return false
+				}
+
+				if !filterStringFilter(v, f) {
+					return false
+				}
+			case models.ResourceQuantityFilter:
+				v, found, _ := unstructured.NestedString(u, key)
+				if !found {
+					return false
+				}
+
+				qty, parseErr := resource.ParseQuantity(v)
+				if parseErr != nil {
+					return false
+				}
+
+				if !filterResourceQuantityFilter(qty, f) {
+					return false
+				}
+			}
 		}
 	}
 

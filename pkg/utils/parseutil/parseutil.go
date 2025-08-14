@@ -47,6 +47,7 @@ func ParseFlavorSelector(selector *nodecorev1alpha1.Selector) (models.Selector, 
 				Memory:       nil,
 				Pods:         nil,
 				Storage:      nil,
+				GPUFields:    nil,
 			}, nil
 		}
 		// Force casting of selectorStruct to K8Slice
@@ -98,6 +99,114 @@ func ParseFlavorSelector(selector *nodecorev1alpha1.Selector) (models.Selector, 
 	default:
 		return nil, fmt.Errorf("unknown selector type")
 	}
+}
+
+func ParseGPUFilter(selector nodecorev1alpha1.GPUFieldSelector) (models.FilterData, error) {
+	switch selector.Selector {
+	case nodecorev1alpha1.ResourceRangeSelectorName:
+		return ParseResourceQuantityFilter(&nodecorev1alpha1.ResourceQuantityFilter{
+			Name: nodecorev1alpha1.TypeRangeFilter,
+			Data: selector.Data,
+		})
+	case nodecorev1alpha1.ResourceMatchSelectorName:
+		return ParseResourceQuantityFilter(&nodecorev1alpha1.ResourceQuantityFilter{
+			Name: nodecorev1alpha1.TypeMatchFilter,
+			Data: selector.Data,
+		})
+	case nodecorev1alpha1.StringRangeSelectorName:
+		return ParseStringFilter(&nodecorev1alpha1.StringFilter{
+			Name: nodecorev1alpha1.TypeRangeFilter,
+			Data: selector.Data,
+		})
+	case nodecorev1alpha1.StringFilterSelectorName:
+		return ParseStringFilter(&nodecorev1alpha1.StringFilter{
+			Name: nodecorev1alpha1.TypeMatchFilter,
+			Data: selector.Data,
+		})
+	case nodecorev1alpha1.BooleanFilterSelectorName:
+		return ParseBooleanFilter(&nodecorev1alpha1.BooleanFilter{
+			Data: selector.Data,
+		})
+	case nodecorev1alpha1.NumberRangeSelectorName:
+		return ParseNumberFilter(&nodecorev1alpha1.NumberFilter{
+			Name: nodecorev1alpha1.TypeRangeFilter,
+			Data: selector.Data,
+		})
+	case nodecorev1alpha1.NumberMatchSelectorName:
+		return ParseNumberFilter(&nodecorev1alpha1.NumberFilter{
+			Name: nodecorev1alpha1.TypeMatchFilter,
+			Data: selector.Data,
+		})
+	default:
+		return nil, fmt.Errorf("unknown filter type")
+	}
+}
+
+func ParseNumberFilter(filter *nodecorev1alpha1.NumberFilter) (models.NumberFilter, error) {
+	var filterModel models.NumberFilter
+
+	if filter == nil {
+		return filterModel, nil
+	}
+
+	klog.Infof("Parsing the filter %s", filter.Name)
+
+	switch filter.Name {
+	case nodecorev1alpha1.TypeMatchFilter:
+		klog.Info("Parsing the filter as a MatchFilter")
+		// Unmarshal the data into a ResourceMatchSelector
+		var matchFilter nodecorev1alpha1.NumberMatchSelector
+		err := json.Unmarshal(filter.Data.Raw, &matchFilter)
+		if err != nil {
+			return filterModel, err
+		}
+
+		matchFilterData := models.NumberMatchFilter{
+			Value: matchFilter.Value,
+		}
+		// Marshal the filter data into JSON
+		matchFilterDataJSON, err := json.Marshal(matchFilterData)
+		if err != nil {
+			return filterModel, err
+		}
+		// Generate the model for the filter
+		filterModel = models.NumberFilter{
+			Name: models.MatchFilter,
+			Data: matchFilterDataJSON,
+		}
+
+		klog.Infof("Filter model: %v", filterModel)
+	case nodecorev1alpha1.TypeRangeFilter:
+		klog.Info("Parsing the filter as a RangeFilter")
+		// Unmarshal the data into a NumberRangeSelector
+		var rangeFilter nodecorev1alpha1.NumberRangeSelector
+		err := json.Unmarshal(filter.Data.Raw, &rangeFilter)
+		if err != nil {
+			return filterModel, err
+		}
+
+		rangeFilterData := models.NumberRangeFilter{
+			Min: rangeFilter.Min,
+			Max: rangeFilter.Max,
+		}
+		// Marshal the filter data into JSON
+		rangeFilterDataJSON, err := json.Marshal(rangeFilterData)
+		if err != nil {
+			return filterModel, err
+		}
+
+		// Generate the model for the filter
+		filterModel = models.NumberFilter{
+			Name: models.RangeFilter,
+			Data: rangeFilterDataJSON,
+		}
+
+		klog.Infof("Filter model: %v", filterModel)
+	default:
+		return filterModel, fmt.Errorf("unknown filter type")
+	}
+
+	return filterModel, nil
 }
 
 // ParseResourceQuantityFilter parses a filter of type ResourceQuantityFilter into a ResourceQuantityFilter model.
@@ -162,6 +271,21 @@ func ParseResourceQuantityFilter(filter *nodecorev1alpha1.ResourceQuantityFilter
 		klog.Infof("Filter model: %v", filterModel)
 	default:
 		return filterModel, fmt.Errorf("unknown filter type")
+	}
+
+	return filterModel, nil
+}
+
+// ParseBooleanFilter parses a filter of type BooleanFilter into a BooleanFilter model.
+func ParseBooleanFilter(filter *nodecorev1alpha1.BooleanFilter) (models.BooleanFilter, error) {
+	var filterModel models.BooleanFilter
+
+	if filter == nil {
+		return filterModel, nil
+	}
+
+	if err := json.Unmarshal(filter.Data.Raw, &filterModel.Condition); err != nil {
+		return filterModel, err
 	}
 
 	return filterModel, nil
@@ -319,6 +443,22 @@ func parseK8SliceFilters(k8sSelector *nodecorev1alpha1.K8SliceSelector) (*models
 				return &storageFilterModel
 			}
 			return nil
+		}(),
+		GPUFields: func() map[string]models.FilterData {
+			gpuFilters := map[string]models.FilterData{}
+
+			for _, f := range k8sSelector.GPUFilters {
+				parsed, parsedErr := ParseGPUFilter(f)
+				if parsedErr != nil {
+					klog.Infof("GPU filter %q for field %q has parsing error: %s", f.Selector, f.Field, parsedErr.Error())
+
+					continue
+				}
+
+				gpuFilters[f.Field] = parsed
+			}
+
+			return gpuFilters
 		}(),
 	}
 

@@ -24,7 +24,7 @@ import (
 type GpuCharacteristics struct {
 	Vendor                string            `json:"vendor"`
 	Model                 string            `json:"model"`
-	Count                 int64             `json:"total_count"`
+	Count                 int64             `json:"count"`
 	Tier                  string            `json:"tier"`
 	MultiInstance         bool              `json:"multi_instance"`
 	Shared                bool              `json:"shared"`
@@ -108,6 +108,7 @@ type K8SliceSelector struct {
 	Memory       *ResourceQuantityFilter `scheme:"memory,omitempty"`
 	Pods         *ResourceQuantityFilter `scheme:"pods,omitempty"`
 	Storage      *ResourceQuantityFilter `scheme:"storage,omitempty"`
+	GPUFields    map[string]FilterData   `scheme:"gpuFields,omitempty"`
 }
 
 // GetSelectorType returns the type of the Selector.

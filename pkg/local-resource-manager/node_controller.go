@@ -174,9 +174,11 @@ func (r *NodeReconciler) createOrUpdateFlavor(ctx context.Context, flavor *nodec
 		k8sSliceType.Characteristics.Architecture = nodeInfo.Architecture
 		k8sSliceType.Characteristics.Gpu = &nodecorev1alpha1.GPU{
 			Model:                 nodeInfo.ResourceMetrics.GPU.Model,
+			Cores:                 nodeInfo.ResourceMetrics.GPU.CoresTotal,
 			Memory:                nodeInfo.ResourceMetrics.GPU.MemoryTotal,
 			Vendor:                nodeInfo.ResourceMetrics.GPU.Vendor,
 			Tier:                  nodeInfo.ResourceMetrics.GPU.Tier,
+			Count:                 nodeInfo.ResourceMetrics.GPU.Count,
 			MultiInstance:         nodeInfo.ResourceMetrics.GPU.MultiInstance,
 			Shared:                nodeInfo.ResourceMetrics.GPU.Shared,
 			SharingStrategy:       nodeInfo.ResourceMetrics.GPU.SharingStrategy,
@@ -192,7 +194,6 @@ func (r *NodeReconciler) createOrUpdateFlavor(ctx context.Context, flavor *nodec
 			Architecture:          nodeInfo.ResourceMetrics.GPU.Architecture,
 			Interconnect:          nodeInfo.ResourceMetrics.GPU.Interconnect,
 			InterconnectBandwidth: nodeInfo.ResourceMetrics.GPU.InterconnectBandwidth,
-			CoresTotal:            nodeInfo.ResourceMetrics.GPU.CoresTotal,
 			ComputeCapability:     nodeInfo.ResourceMetrics.GPU.ComputeCapability,
 			ClockSpeed:            nodeInfo.ResourceMetrics.GPU.ClockSpeed,
 			FP32TFlops:            nodeInfo.ResourceMetrics.GPU.FP32TFlops,

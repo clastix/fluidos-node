@@ -77,13 +77,13 @@ func forgeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.
 	}
 	if v, found := annotations["gpu.fluidos.eu/count"]; found {
 		count, _ := strconv.Atoi(v)
-		gpuMetrics.CountTotal = int64(count)
+		gpuMetrics.Count = int64(count)
 	}
 	if v, found := annotations["gpu.fluidos.eu/memory-per-gpu"]; found {
 		qty := resource.MustParse(v)
 
 		computed := resource.NewQuantity(0, resource.BinarySI)
-		for range gpuMetrics.CountTotal {
+		for range gpuMetrics.Count {
 			computed.Add(qty)
 		}
 
@@ -122,7 +122,7 @@ func forgeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.
 		qty := resource.MustParse(v)
 
 		computed := resource.NewQuantity(0, resource.BinarySI)
-		for range gpuMetrics.CountTotal {
+		for range gpuMetrics.Count {
 			computed.Add(qty)
 		}
 

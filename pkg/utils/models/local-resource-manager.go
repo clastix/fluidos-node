@@ -31,8 +31,9 @@ type NodeInfo struct {
 type GPUMetrics struct {
 	Vendor      string            `json:"vendor,omitempty"`
 	Model       string            `json:"model,omitempty"`
-	CountTotal  int64             `json:"total_count"`
-	MemoryTotal resource.Quantity `json:"totalMemory"`
+	Count       int64             `json:"count"`
+	MemoryTotal resource.Quantity `json:"total_memory"`
+	CoresTotal  resource.Quantity `json:"total_cores"`
 	Tier        string            `json:"tier,omitempty"`
 
 	GPUSharingMetrics  `json:",inline"`
@@ -68,7 +69,6 @@ type GPUSpecMetrics struct {
 	Architecture          string            `json:"architecture,omitempty"`
 	Interconnect          string            `json:"interconnect,omitempty"`
 	InterconnectBandwidth resource.Quantity `json:"interconnect_bandwidth,omitempty"`
-	CoresTotal            resource.Quantity `json:"totalCores"`
 	ComputeCapability     string            `json:"compute_capability,omitempty"`
 	ClockSpeed            resource.Quantity `json:"clock_speed,omitempty"`
 	FP32TFlops            float64           `json:"fp32_tflops,omitempty"`
