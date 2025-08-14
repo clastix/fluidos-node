@@ -32,13 +32,14 @@ import (
 	ipamLiqo "github.com/liqotech/liqo/pkg/utils/ipam"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	klog "k8s.io/klog/v2"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -375,7 +376,7 @@ func createTenantNamespace(ctx context.Context, cl client.Client, clusterID core
 	err := cl.Create(ctx, tenantNamespace)
 	if err != nil {
 		klog.Error(err)
-		return "", err
+		return name, err
 	}
 	klog.InfofDepth(1, "Tenant namespace %s created in %s cluster", name, clusterID)
 	return name, nil
@@ -447,15 +448,19 @@ func EstablishNetwork(
 	// Create local tenant namespaces
 	localNamespaceName, err := createTenantNamespace(ctx, localClient, remoteClusterIdentity)
 	if err != nil {
-		klog.Error(err)
-		return nil, nil, "", "", err
+		if !errors.IsAlreadyExists(err) {
+			klog.Error(err)
+			return nil, nil, "", "", err
+		}
 	}
 
 	// Create remote tenant namespaces
 	remoteNamespaceName, err := createTenantNamespace(ctx, remoteClient, localClusterIdentity)
 	if err != nil {
-		klog.Error(err)
-		return nil, nil, "", "", err
+		if !errors.IsAlreadyExists(err) {
+			klog.Error(err)
+			return nil, nil, "", "", err
+		}
 	}
 
 	klog.InfoDepth(1, "Creating configurations...")
@@ -474,10 +479,11 @@ func EstablishNetwork(
 	}
 
 	// Remote cluster applies Local configuration
-	err = remoteClient.Create(ctx, localConfiguration)
-	if err != nil {
-		klog.Error(err)
-		return nil, nil, "", "", err
+	if err = remoteClient.Create(ctx, localConfiguration); err != nil {
+		if !errors.IsAlreadyExists(err) {
+			klog.Error(err)
+			return nil, nil, "", "", err
+		}
 	}
 
 	klog.InfofDepth(1, "Local configuration %s created", localConfiguration.Name)
@@ -496,10 +502,11 @@ func EstablishNetwork(
 	}
 
 	// Local cluster applies Remote configuration
-	err = localClient.Create(ctx, remoteConfiguration)
-	if err != nil {
-		klog.Error(err)
-		return nil, nil, "", "", err
+	if err = localClient.Create(ctx, remoteConfiguration); err != nil {
+		if !errors.IsAlreadyExists(err) {
+			klog.Error(err)
+			return nil, nil, "", "", err
+		}
 	}
 
 	klog.InfofDepth(1, "Remote configuration %s created", remoteConfiguration.Name)
@@ -536,7 +543,6 @@ func EstablishNetwork(
 		gatewayServerPort,
 	)
 	if err != nil {
-		klog.Error(err)
 		return nil, nil, "", "", err
 	}
 
@@ -558,8 +564,10 @@ func EstablishNetwork(
 	// Create public key on Local cluster
 	err = remoteClient.Create(ctx, localPublicKey)
 	if err != nil {
-		klog.Error(err)
-		return nil, nil, "", "", err
+		if !errors.IsAlreadyExists(err) {
+			klog.Error(err)
+			return nil, nil, "", "", err
+		}
 	}
 
 	klog.InfofDepth(1, "Local public key %s created", localPublicKey.Name)
@@ -580,8 +588,10 @@ func EstablishNetwork(
 	// Create public key on Remote cluster
 	err = localClient.Create(ctx, remotePublicKey)
 	if err != nil {
-		klog.Error(err)
-		return nil, nil, "", "", err
+		if !errors.IsAlreadyExists(err) {
+			klog.Error(err)
+			return nil, nil, "", "", err
+		}
 	}
 
 	klog.InfofDepth(1, "Remote public key %s created", remotePublicKey.Name)
@@ -729,8 +739,10 @@ func createGatewayClient(
 	// Create GatewayClient on Local cluster
 	err = localClient.Create(ctx, gatewayClient)
 	if err != nil {
-		klog.Error(err)
-		return nil, nil, err
+		if !errors.IsAlreadyExists(err) {
+			klog.Error(err)
+			return nil, nil, err
+		}
 	}
 
 	klog.InfofDepth(1, "GatewayClient %s created", gwClientName)
@@ -798,10 +810,11 @@ func createGatewayServer(
 		return nil, nil, 0, nil, err
 	}
 
-	err = remoteClient.Create(ctx, gatewayServer)
-	if err != nil {
-		klog.Error(err)
-		return nil, nil, 0, nil, err
+	if err = remoteClient.Create(ctx, gatewayServer); err != nil {
+		if !errors.IsAlreadyExists(err) {
+			klog.Error(err)
+			return nil, nil, 0, nil, err
+		}
 	}
 
 	klog.InfofDepth(1, "GatewayServer %s created", gwServerName)
@@ -1226,8 +1239,10 @@ func PeerWithCluster(
 	// Authenticate with remote cluster
 	err = Authentication(ctx, localClient, localRestConfig, remoteclient, remoteRestConfig, localNamespaceName, remoteNamespaceName)
 	if err != nil {
-		klog.Error(err)
-		return nil, err
+		if !errors.IsAlreadyExists(err) {
+			klog.Error(err)
+			return nil, err
+		}
 	}
 
 	err = Offloading(ctx, localClient, remoteRestConfig, localNamespaceName, contract)

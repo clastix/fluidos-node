@@ -397,71 +397,47 @@ func (r *AllocationReconciler) handleK8SliceConsumerAllocation(ctx context.Conte
 
 		// Get the Liqo credentials for the peering target cluster, that in this scenario is the provider
 		credentials := contract.Spec.PeeringTargetCredentials
-		// Check if a Liqo peering has been already established
-		_, err := fcutils.GetForeignClusterByID(ctx, r.Client, v1beta1.ClusterID(credentials.ClusterID))
+		// Check if a Liqo peering has been already established:
+		// if it has been done before for another flavour, perform it in an idempotent way.
+		klog.InfofDepth(1, "Allocation %s is peering with cluster %s", req.NamespacedName, credentials.ClusterID)
+		// Decode Kubeconfig
+		kubeconfig, err := virtualfabricmanager.DecodeKubeconfig(credentials.Kubeconfig)
 		if err != nil {
-			if apierrors.IsNotFound(err) {
-				// Establish peering
-				klog.InfofDepth(1, "Allocation %s is peering with cluster %s", req.NamespacedName, credentials.ClusterID)
-				// Decode Kubeconfig
-				kubeconfig, err := virtualfabricmanager.DecodeKubeconfig(credentials.Kubeconfig)
-				if err != nil {
-					klog.Errorf("Error when decoding Kubeconfig: %v", err)
-					allocation.SetStatus(nodecorev1alpha1.Error, "Error when decoding Kubeconfig")
-					if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-						klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
-						return ctrl.Result{}, err
-					}
-					return ctrl.Result{}, nil
-				}
-				remoteClient, remoteRestConfig, err := virtualfabricmanager.CreateKubeClientFromConfig(kubeconfig, r.Client.Scheme())
-				if err != nil {
-					klog.Errorf("Error when creating remote client: %v", err)
-					allocation.SetStatus(nodecorev1alpha1.Error, "Error when creating remote client")
-					if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-						klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
-						return ctrl.Result{}, err
-					}
-					return ctrl.Result{}, nil
-				}
-				_, err = virtualfabricmanager.PeerWithCluster(
-					ctx,
-					r.Client,
-					r.RestConfig,
-					remoteClient,
-					remoteRestConfig,
-					contract,
-				)
-				if err != nil {
-					klog.Errorf("Error when peering with cluster %s: %s", credentials.ClusterID, err)
-					allocation.SetStatus(nodecorev1alpha1.Error, "Error when peering with cluster "+credentials.ClusterID)
-					if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-						klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-						return ctrl.Result{}, err
-					}
-					return ctrl.Result{}, err
-				}
-				// Peering established
-				klog.Infof("Allocation %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterID)
-
-				// Change the status of the Allocation to Active
-				allocation.SetStatus(nodecorev1alpha1.Active, "Allocation is now Active")
-				if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-					return ctrl.Result{}, err
-				}
-			} else {
-				klog.Errorf("Error when getting ForeignCluster %s: %v", credentials.ClusterID, err)
-				allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting ForeignCluster")
-				if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-					klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
-					return ctrl.Result{}, err
-				}
+			klog.Errorf("Error when decoding Kubeconfig: %v", err)
+			allocation.SetStatus(nodecorev1alpha1.Error, "Error when decoding Kubeconfig")
+			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+				return ctrl.Result{}, err
 			}
-		} else {
-			// Peering already established
-			klog.Infof("Allocation %s has already peered with cluster %s", req.NamespacedName.Name, credentials.ClusterID)
 			return ctrl.Result{}, nil
+		}
+		remoteClient, remoteRestConfig, err := virtualfabricmanager.CreateKubeClientFromConfig(kubeconfig, r.Client.Scheme())
+		if err != nil {
+			klog.Errorf("Error when creating remote client: %v", err)
+			allocation.SetStatus(nodecorev1alpha1.Error, "Error when creating remote client")
+			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+		if _, err = virtualfabricmanager.PeerWithCluster(ctx, r.Client, r.RestConfig, remoteClient, remoteRestConfig, contract); err != nil {
+			klog.Errorf("Error when peering with cluster %s: %s", credentials.ClusterID, err)
+			allocation.SetStatus(nodecorev1alpha1.Error, "Error when peering with cluster "+credentials.ClusterID)
+			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+		}
+		// Peering established
+		klog.Infof("Allocation %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterID)
+
+		// Change the status of the Allocation to Active
+		allocation.SetStatus(nodecorev1alpha1.Active, "Allocation is now Active")
+		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
 		}
 
 		return ctrl.Result{}, nil
