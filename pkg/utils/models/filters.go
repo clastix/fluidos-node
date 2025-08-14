@@ -20,29 +20,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-// ResourceQuantityFilter represents a filter for a resource quantity.
-type ResourceQuantityFilter struct {
-	Name FilterType      `scheme:"name"`
-	Data json.RawMessage `scheme:"data"`
-}
-
-// ResourceQuantityFilterData represents the data of a ResourceQuantityFilter.
-type ResourceQuantityFilterData interface {
+type FilterData interface {
 	GetFilterType() FilterType
 }
 
-// StringFilter represents a filter for a string.
-type StringFilter struct {
-	Name FilterType      `scheme:"name"`
-	Data json.RawMessage `scheme:"data"`
-}
-
-// StringFilterData represents the data of a StringFilter.
-type StringFilterData interface {
-	GetFilterType() FilterType
-}
-
-// FilterType represents the type of a Filter.
+// FilterType represents the type of Filter.
 type FilterType string
 
 const (
@@ -52,14 +34,58 @@ const (
 	RangeFilter FilterType = "Range"
 )
 
-// ResourceQuantityMatchFilter represents a match filter for a resource quantity.
-type ResourceQuantityMatchFilter struct {
-	Value resource.Quantity `scheme:"value"`
+// NumberFilter represents a filter for a numeric value.
+type NumberFilter struct {
+	Name FilterType      `scheme:"name"`
+	Data json.RawMessage `scheme:"data"`
+}
+
+func (r NumberFilter) GetFilterType() FilterType {
+	return r.Name
+}
+
+type NumberMatchFilter struct {
+	Value float64 `scheme:"value"`
+}
+
+type NumberRangeFilter struct {
+	Min *float64 `scheme:"min,omitempty"`
+	Max *float64 `scheme:"max,omitempty"`
+}
+
+// ResourceQuantityFilter represents a filter for a resource quantity.
+type ResourceQuantityFilter struct {
+	Name FilterType      `scheme:"name"`
+	Data json.RawMessage `scheme:"data"`
+}
+
+func (r ResourceQuantityFilter) GetFilterType() FilterType {
+	return r.Name
+}
+
+// BooleanFilter is a filter that can be applied to a boolean value.
+type BooleanFilter struct {
+	Condition bool `scheme:"condition"`
 }
 
 // GetFilterType returns the type of the Filter.
-func (fq ResourceQuantityMatchFilter) GetFilterType() FilterType {
+func (BooleanFilter) GetFilterType() FilterType {
 	return MatchFilter
+}
+
+// StringFilter represents a filter for a string.
+type StringFilter struct {
+	Name FilterType      `scheme:"name"`
+	Data json.RawMessage `scheme:"data"`
+}
+
+func (s StringFilter) GetFilterType() FilterType {
+	return s.Name
+}
+
+// ResourceQuantityMatchFilter represents a match filter for a resource quantity.
+type ResourceQuantityMatchFilter struct {
+	Value resource.Quantity `scheme:"value"`
 }
 
 // ResourceQuantityRangeFilter represents a range filter for a resource quantity.
@@ -68,19 +94,9 @@ type ResourceQuantityRangeFilter struct {
 	Max *resource.Quantity `scheme:"max,omitempty"`
 }
 
-// GetFilterType returns the type of the Filter.
-func (fq ResourceQuantityRangeFilter) GetFilterType() FilterType {
-	return RangeFilter
-}
-
 // StringMatchFilter represents a match filter for a string.
 type StringMatchFilter struct {
 	Value string `scheme:"value"`
-}
-
-// GetFilterType returns the type of the Filter.
-func (fq StringMatchFilter) GetFilterType() FilterType {
-	return MatchFilter
 }
 
 // StringRangeFilter represents a range filter for a string.

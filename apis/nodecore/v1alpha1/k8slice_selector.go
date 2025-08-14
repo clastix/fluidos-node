@@ -14,7 +14,9 @@
 
 package v1alpha1
 
-import "k8s.io/klog/v2"
+import (
+	"k8s.io/klog/v2"
+)
 
 // K8SliceSelector is the selector for a K8Slice.
 type K8SliceSelector struct {
@@ -32,6 +34,9 @@ type K8SliceSelector struct {
 
 	// StorageFilter is the Storage filter of the K8SliceSelector.
 	StorageFilter *ResourceQuantityFilter `json:"storageFilter,omitempty"`
+
+	//GPUFilters is the advanced GPU filter of the K8SliceSelector
+	GPUFilters []GPUFieldSelector `json:"gpuFilters,omitempty"`
 }
 
 // GetFlavorTypeSelector returns the type of the Flavor.

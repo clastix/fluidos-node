@@ -1101,14 +1101,8 @@ func computeK8SliceCharacteristics(origin *nodecorev1alpha1.K8SliceCharacteristi
 			switch {
 			case part.Gpu != nil && origin != nil:
 				// Gpu is present in the origin and in the partition
-				newGpuCores := origin.Gpu.Cores.DeepCopy()
-				newGpuCores.Sub(part.Gpu.Cores)
-				newGpuMemory := origin.Gpu.Memory.DeepCopy()
-				newGpuMemory.Sub(part.Gpu.Memory)
-
 				newGpu := origin.DeepCopy()
-				newGpu.Gpu.Cores = newGpuCores
-				newGpu.Gpu.Memory = newGpuMemory
+				newGpu.Gpu.Count = 0
 
 				return newGpu.Gpu
 			case part.Gpu == nil && origin.Gpu != nil:
@@ -1207,7 +1201,6 @@ func reduceFlavorAvailability(ctx context.Context, flavor *nodecorev1alpha1.Flav
 			}
 
 			newFlavor := resourceforge.ForgeFlavorFromRef(flavor, newFlavorType)
-
 			// Create new Flavor
 			if err := r.Create(ctx, newFlavor); err != nil {
 				klog.Errorf("Error when creating Flavor %s: %v", newFlavor.Name, err)
